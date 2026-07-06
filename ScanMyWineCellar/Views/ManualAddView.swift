@@ -4,6 +4,7 @@ import SwiftData
 struct ManualAddView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    let cellar: Cellar
 
     @State private var name = ""
     @State private var producer = ""
@@ -27,14 +28,7 @@ struct ManualAddView: View {
                             Text(color.label).tag(color)
                         }
                     }
-                    Stepper(value: $vintage, in: 0...2100) {
-                        HStack {
-                            Text("Vintage")
-                            Spacer()
-                            Text(vintage > 0 ? String(vintage) : "NV")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
+                    VintageField(vintage: $vintage)
                 }
                 Section("Origin") {
                     TextField("Region", text: $region)
@@ -72,6 +66,7 @@ struct ManualAddView: View {
                             quantity: quantity,
                             notes: notes
                         )
+                        wine.cellar = cellar
                         modelContext.insert(wine)
                         dismiss()
                     }

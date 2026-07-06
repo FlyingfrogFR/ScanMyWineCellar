@@ -3,6 +3,7 @@ import PhotosUI
 
 struct ScanView: View {
     @Environment(\.dismiss) private var dismiss
+    let cellar: Cellar
 
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var images: [UIImage] = []
@@ -32,7 +33,7 @@ struct ScanView: View {
                 }
             }
             .navigationDestination(item: $scanned) { wines in
-                ScanReviewView(wines: wines) {
+                ScanReviewView(wines: wines, cellar: cellar) {
                     dismiss()
                 }
             }

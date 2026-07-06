@@ -8,12 +8,14 @@ struct ScanReviewView: View {
     @Query private var existingWines: [Wine]
 
     @State var wines: [ScannedWine]
+    let cellar: Cellar
     let onDone: () -> Void
 
     @State private var editingIndex: Int?
 
-    init(wines: [ScannedWine], onDone: @escaping () -> Void) {
+    init(wines: [ScannedWine], cellar: Cellar, onDone: @escaping () -> Void) {
         self._wines = State(initialValue: wines)
+        self.cellar = cellar
         self.onDone = onDone
     }
 
@@ -60,9 +62,14 @@ struct ScanReviewView: View {
     private func addToCellar() {
         for scanned in wines where scanned.include {
             let wine = scanned.toWine()
-            if let existing = existingWines.first(where: { $0.mergeKey == wine.mergeKey }) {
+            let existing = existingWines.first {
+                $0.cellar?.persistentModelID == cellar.persistentModelID
+                    && $0.mergeKey == wine.mergeKey
+            }
+            if let existing {
                 existing.quantity += wine.quantity
             } else {
+                wine.cellar = cellar
                 modelContext.insert(wine)
             }
         }
@@ -139,14 +146,7 @@ private struct ScannedWineEditView: View {
                             Text(color.label).tag(color)
                         }
                     }
-                    Stepper(value: $wine.vintage, in: 0...2100) {
-                        HStack {
-                            Text("Vintage")
-                            Spacer()
-                            Text(wine.vintage > 0 ? String(wine.vintage) : "NV")
-                                .foregroundStyle(.secondary)
-                        }
-                    }
+                    VintageField(vintage: $wine.vintage)
                 }
                 Section("Origin") {
                     TextField("Region", text: $wine.region)

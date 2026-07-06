@@ -4,6 +4,7 @@ import SwiftData
 struct WineDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Query(sort: \Cellar.dateCreated) private var cellars: [Cellar]
     @Bindable var wine: Wine
 
     @State private var confirmDelete = false
@@ -18,20 +19,27 @@ struct WineDetailView: View {
                         Text(color.label).tag(color)
                     }
                 }
-                Stepper(value: $wine.vintage, in: 0...2100) {
-                    HStack {
-                        Text("Vintage")
-                        Spacer()
-                        Text(wine.vintageLabel)
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                VintageField(vintage: $wine.vintage)
             }
             Section("Origin") {
                 TextField("Region", text: $wine.region)
                 TextField("Country", text: $wine.country)
                 TextField("Appellation", text: $wine.appellation)
                 TextField("Grape varieties", text: $wine.grapeVarieties)
+            }
+            if cellars.count > 1 {
+                Section("Cellar") {
+                    Picker("Cellar", selection: Binding(
+                        get: { wine.cellar?.persistentModelID },
+                        set: { id in
+                            wine.cellar = cellars.first { $0.persistentModelID == id }
+                        }
+                    )) {
+                        ForEach(cellars) { cellar in
+                            Text(cellar.name).tag(Optional(cellar.persistentModelID))
+                        }
+                    }
+                }
             }
             Section("In cellar") {
                 Stepper(value: $wine.quantity, in: 0...500) {

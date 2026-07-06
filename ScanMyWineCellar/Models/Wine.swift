@@ -52,6 +52,7 @@ final class Wine {
     var quantity: Int
     var notes: String
     var dateAdded: Date
+    var cellar: Cellar?
 
     init(
         name: String,
