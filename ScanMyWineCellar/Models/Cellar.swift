@@ -9,6 +9,9 @@ final class Cellar {
     @Relationship(deleteRule: .cascade, inverse: \Wine.cellar)
     var wines: [Wine]?
 
+    @Relationship(deleteRule: .cascade, inverse: \Rack.cellar)
+    var racks: [Rack]?
+
     init(name: String, dateCreated: Date = .now) {
         self.name = name
         self.dateCreated = dateCreated

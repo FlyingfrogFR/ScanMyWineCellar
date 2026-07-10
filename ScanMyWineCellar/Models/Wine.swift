@@ -53,6 +53,10 @@ final class Wine {
     var notes: String
     var dateAdded: Date
     var cellar: Cellar?
+    /// Where this wine lives: nil rack = not placed on the map yet.
+    /// Location is tracked per wine (all bottles together) for now.
+    var rack: Rack?
+    var floorIndex: Int = 0
 
     init(
         name: String,
@@ -87,6 +91,11 @@ final class Wine {
 
     var vintageLabel: String {
         vintage > 0 ? String(vintage) : "NV"
+    }
+
+    var locationLabel: String {
+        guard let rack else { return "" }
+        return "\(rack.name) · \(rack.floorName(floorIndex))"
     }
 
     /// Key used to merge duplicates when adding scanned wines.

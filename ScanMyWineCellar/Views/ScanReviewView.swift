@@ -9,13 +9,23 @@ struct ScanReviewView: View {
 
     @State var wines: [ScannedWine]
     let cellar: Cellar
+    let rack: Rack?
+    let floor: Int
     let onDone: () -> Void
 
     @State private var editingIndex: Int?
 
-    init(wines: [ScannedWine], cellar: Cellar, onDone: @escaping () -> Void) {
+    init(
+        wines: [ScannedWine],
+        cellar: Cellar,
+        rack: Rack? = nil,
+        floor: Int = 0,
+        onDone: @escaping () -> Void
+    ) {
         self._wines = State(initialValue: wines)
         self.cellar = cellar
+        self.rack = rack
+        self.floor = floor
         self.onDone = onDone
     }
 
@@ -68,8 +78,16 @@ struct ScanReviewView: View {
             }
             if let existing {
                 existing.quantity += wine.quantity
+                if existing.rack == nil, let rack {
+                    existing.rack = rack
+                    existing.floorIndex = floor
+                }
             } else {
                 wine.cellar = cellar
+                if let rack {
+                    wine.rack = rack
+                    wine.floorIndex = floor
+                }
                 modelContext.insert(wine)
             }
         }

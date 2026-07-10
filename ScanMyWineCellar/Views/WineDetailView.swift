@@ -5,7 +5,12 @@ struct WineDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Query(sort: \Cellar.dateCreated) private var cellars: [Cellar]
+    @Query(sort: \Rack.orderIndex) private var allRacks: [Rack]
     @Bindable var wine: Wine
+
+    private var cellarRacks: [Rack] {
+        allRacks.filter { $0.cellar?.persistentModelID == wine.cellar?.persistentModelID }
+    }
 
     @State private var confirmDelete = false
 
@@ -37,6 +42,30 @@ struct WineDetailView: View {
                     )) {
                         ForEach(cellars) { cellar in
                             Text(cellar.name).tag(Optional(cellar.persistentModelID))
+                        }
+                    }
+                }
+            }
+            if !cellarRacks.isEmpty {
+                Section("Location") {
+                    Picker("Rack", selection: Binding(
+                        get: { wine.rack?.persistentModelID },
+                        set: { id in
+                            wine.rack = cellarRacks.first { $0.persistentModelID == id }
+                            let maxFloor = max(0, (wine.rack?.floorCount ?? 1) - 1)
+                            wine.floorIndex = min(wine.floorIndex, maxFloor)
+                        }
+                    )) {
+                        Text("Not placed").tag(nil as PersistentIdentifier?)
+                        ForEach(cellarRacks) { rack in
+                            Text(rack.name).tag(Optional(rack.persistentModelID))
+                        }
+                    }
+                    if let rack = wine.rack {
+                        Picker("Floor", selection: $wine.floorIndex) {
+                            ForEach(0..<rack.floorCount, id: \.self) { floor in
+                                Text(rack.floorName(floor)).tag(floor)
+                            }
                         }
                     }
                 }

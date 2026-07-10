@@ -7,6 +7,6 @@ struct ScanMyWineCellarApp: App {
         WindowGroup {
             CellarView()
         }
-        .modelContainer(for: [Wine.self, Cellar.self])
+        .modelContainer(for: [Wine.self, Cellar.self, Rack.self])
     }
 }

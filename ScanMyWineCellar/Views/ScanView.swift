@@ -1,9 +1,18 @@
 import SwiftUI
+import SwiftData
 import PhotosUI
 
 struct ScanView: View {
     @Environment(\.dismiss) private var dismiss
+    @Query(sort: \Rack.orderIndex) private var allRacks: [Rack]
     let cellar: Cellar
+
+    @State private var targetRack: Rack?
+    @State private var targetFloor = 0
+
+    private var racks: [Rack] {
+        allRacks.filter { $0.cellar?.persistentModelID == cellar.persistentModelID }
+    }
 
     @State private var pickerItems: [PhotosPickerItem] = []
     @State private var images: [UIImage] = []
@@ -33,7 +42,12 @@ struct ScanView: View {
                 }
             }
             .navigationDestination(item: $scanned) { wines in
-                ScanReviewView(wines: wines, cellar: cellar) {
+                ScanReviewView(
+                    wines: wines,
+                    cellar: cellar,
+                    rack: targetRack,
+                    floor: targetFloor
+                ) {
                     dismiss()
                 }
             }
@@ -103,6 +117,30 @@ struct ScanView: View {
 
     private var bottomBar: some View {
         VStack(spacing: 12) {
+            if !racks.isEmpty {
+                Menu {
+                    Button("No location") {
+                        targetRack = nil
+                    }
+                    ForEach(racks) { rack in
+                        Menu(rack.name) {
+                            ForEach(0..<rack.floorCount, id: \.self) { floor in
+                                Button(rack.floorName(floor)) {
+                                    targetRack = rack
+                                    targetFloor = floor
+                                }
+                            }
+                        }
+                    }
+                } label: {
+                    Label(
+                        targetRack.map { "\($0.name) · \($0.floorName(targetFloor))" }
+                            ?? "Where are these bottles? (optional)",
+                        systemImage: "mappin.and.ellipse"
+                    )
+                    .font(.subheadline)
+                }
+            }
             HStack(spacing: 12) {
                 if UIImagePickerController.isSourceTypeAvailable(.camera) {
                     Button {

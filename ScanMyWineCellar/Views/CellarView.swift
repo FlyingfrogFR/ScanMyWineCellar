@@ -17,6 +17,7 @@ struct CellarView: View {
     @State private var showRenameCellar = false
     @State private var renameText = ""
     @State private var confirmDeleteCellar = false
+    @State private var showMap = false
 
     /// Wines belonging to the currently selected cellar.
     private var cellarWines: [Wine] {
@@ -60,6 +61,11 @@ struct CellarView: View {
                     }
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
+                    Button {
+                        showMap = true
+                    } label: {
+                        Image(systemName: "square.grid.3x2")
+                    }
                     Menu {
                         Button {
                             showManualAdd = true
@@ -80,6 +86,11 @@ struct CellarView: View {
                     } label: {
                         Image(systemName: "camera.viewfinder")
                     }
+                }
+            }
+            .navigationDestination(isPresented: $showMap) {
+                if let selectedCellar {
+                    CellarMapView(cellar: selectedCellar)
                 }
             }
             .sheet(isPresented: $showScan) {
@@ -361,6 +372,7 @@ struct WineRow: View {
         if !wine.producer.isEmpty { parts.append(wine.producer) }
         parts.append(wine.vintageLabel)
         if !wine.region.isEmpty { parts.append(wine.region) }
+        if !wine.locationLabel.isEmpty { parts.append(wine.locationLabel) }
         return parts.joined(separator: " · ")
     }
 }
@@ -371,5 +383,5 @@ extension URL: @retroactive Identifiable {
 
 #Preview {
     CellarView()
-        .modelContainer(for: [Wine.self, Cellar.self], inMemory: true)
+        .modelContainer(for: [Wine.self, Cellar.self, Rack.self], inMemory: true)
 }

@@ -4,11 +4,12 @@ import Foundation
 /// temporary file for the share sheet.
 enum CSVExporter {
     static func export(_ wines: [Wine], cellarName: String = "MyWineCellar") throws -> URL {
-        var lines = ["Cellar,Name,Producer,Vintage,Color,Region,Country,Appellation,Grape Varieties,Quantity,Notes,Date Added"]
+        var lines = ["Cellar,Location,Name,Producer,Vintage,Color,Region,Country,Appellation,Grape Varieties,Quantity,Notes,Date Added"]
         let dateFormatter = ISO8601DateFormatter()
         for wine in wines {
             let fields = [
                 wine.cellar?.name ?? cellarName,
+                wine.locationLabel,
                 wine.name,
                 wine.producer,
                 wine.vintage > 0 ? String(wine.vintage) : "NV",
