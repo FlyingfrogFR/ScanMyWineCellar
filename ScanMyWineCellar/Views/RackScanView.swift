@@ -40,7 +40,7 @@ struct RackScanView: View {
             }
             .fullScreenCover(isPresented: $showCamera) {
                 CameraPicker { captured in
-                    if let captured { image = captured }
+                    if let captured { image = ImageProcessing.downscaled(captured) }
                 }
                 .ignoresSafeArea()
             }
@@ -48,7 +48,7 @@ struct RackScanView: View {
                 Task {
                     if let data = try? await pickerItem?.loadTransferable(type: Data.self),
                        let loaded = UIImage(data: data) {
-                        image = loaded
+                        image = ImageProcessing.downscaled(loaded)
                     }
                     pickerItem = nil
                 }

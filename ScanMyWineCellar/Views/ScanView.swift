@@ -55,7 +55,7 @@ struct ScanView: View {
             .fullScreenCover(isPresented: $showCamera) {
                 CameraPicker { image in
                     if let image {
-                        images.append(image)
+                        images.append(ImageProcessing.downscaled(image))
                     }
                 }
                 .ignoresSafeArea()
@@ -200,7 +200,9 @@ struct ScanView: View {
         for item in pickerItems {
             if let data = try? await item.loadTransferable(type: Data.self),
                let image = UIImage(data: data) {
-                images.append(image)
+                // Downscale immediately: full-resolution photos decode to
+                // hundreds of MB each and get the app killed by iOS.
+                images.append(ImageProcessing.downscaled(image))
             }
         }
         pickerItems = []
