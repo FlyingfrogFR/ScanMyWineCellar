@@ -1,12 +1,8 @@
 import SwiftUI
 
-/// Cellar palette from the design system: plum-charcoal ground, panel
-/// surfaces, and chalk cards in dark mode; warm paper tones in light.
-extension Color {
-    static let cellarBackground = Color("CellarBackground")
-    static let cellarSurface = Color("CellarSurface")
-    static let cellarCell = Color("CellarCell")
-}
+// Note: Color.cellarBackground, .cellarSurface, and .cellarCell are
+// generated automatically from the asset catalog (asset symbol extensions),
+// so they are not declared here.
 
 extension View {
     /// Themed backdrop for Forms and Lists: hides the system grouped
