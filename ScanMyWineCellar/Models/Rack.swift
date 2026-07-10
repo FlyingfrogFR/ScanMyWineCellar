@@ -27,10 +27,10 @@ final class Rack {
         self.floorNames = []
     }
 
-    /// Display name of a floor (0 = bottom floor, shown as "Floor 1").
+    /// Display name of a shelf (0 = bottom shelf, shown as "Shelf 1").
     func floorName(_ index: Int) -> String {
         let custom = index < floorNames.count ? floorNames[index] : ""
-        return custom.isEmpty ? "Floor \(index + 1)" : custom
+        return custom.isEmpty ? "Shelf \(index + 1)" : custom
     }
 
     func customFloorName(_ index: Int) -> String {

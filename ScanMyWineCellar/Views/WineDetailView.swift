@@ -62,7 +62,7 @@ struct WineDetailView: View {
                         }
                     }
                     if let rack = wine.rack {
-                        Picker("Floor", selection: $wine.floorIndex) {
+                        Picker("Shelf", selection: $wine.floorIndex) {
                             ForEach(0..<rack.floorCount, id: \.self) { floor in
                                 Text(rack.floorName(floor)).tag(floor)
                             }

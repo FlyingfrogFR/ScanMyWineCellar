@@ -34,7 +34,7 @@ struct RackEditorView: View {
                             }
                         ), in: 1...30) {
                             HStack {
-                                Text("Floors")
+                                Text("Shelves")
                                 Spacer()
                                 Text("\(rack.floorCount)")
                                     .foregroundStyle(.secondary)
@@ -45,7 +45,7 @@ struct RackEditorView: View {
                             set: { rack.bottlesPerFloor = $0 }
                         ), in: 1...40) {
                             HStack {
-                                Text("Bottles per floor")
+                                Text("Bottles per shelf")
                                 Spacer()
                                 Text("\(rack.bottlesPerFloor)")
                                     .foregroundStyle(.secondary)
@@ -65,7 +65,7 @@ struct RackEditorView: View {
                         Label("Add rack", systemImage: "plus")
                     }
                 } footer: {
-                    Text("Deleting a rack doesn't delete its wines — they move back to “Not placed”. Floors are counted from the bottom.")
+                    Text("A rack is one storage unit: a wine cabinet like a EuroCave, a wine fridge, or a wall of racks in a cellar. Its shelves are counted from the bottom. Most people need just one rack — rename it after your cabinet. Deleting a rack doesn't delete its wines; they move back to “Not placed”.")
                 }
             }
             .navigationTitle("Racks")

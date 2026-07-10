@@ -59,7 +59,7 @@ struct CellarMapView: View {
         ContentUnavailableView {
             Label("Describe your cellar", systemImage: "square.grid.3x2")
         } description: {
-            Text("Add your racks — how many floors each has and roughly how many bottles fit per floor — and the map will show where every wine lives.")
+            Text("Add your storage — a wine cabinet like a EuroCave counts as one rack, and its shelves are the levels. Tell the app how many shelves it has and roughly how many bottles fit per shelf, and the map will show where every wine lives.")
         } actions: {
             Button {
                 showRackEditor = true
@@ -226,7 +226,7 @@ struct CellarMapView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 4)
             }
-            Text("Open a floor and use “Place bottles here”, or set the location from the wine's page.")
+            Text("Open a shelf and use “Place bottles here”, or set the location from the wine's page.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .padding(.horizontal, 16)
@@ -259,6 +259,15 @@ struct FloorDetailSheet: View {
         allWines.filter { $0.cellar?.persistentModelID == cellar.persistentModelID && $0.rack == nil }
     }
 
+    /// Wines in the same cellar sitting on a different shelf — movable here.
+    private var elsewhere: [Wine] {
+        allWines.filter {
+            $0.cellar?.persistentModelID == cellar.persistentModelID
+                && $0.rack != nil
+                && !($0.rack?.persistentModelID == rack.persistentModelID && $0.floorIndex == floor)
+        }
+    }
+
     private var bottleCount: Int { floorWines.reduce(0) { $0 + $1.quantity } }
 
     var body: some View {
@@ -267,7 +276,7 @@ struct FloorDetailSheet: View {
                 nameSection
                 Section {
                     if floorWines.isEmpty {
-                        Text("Empty floor")
+                        Text("Empty shelf")
                             .foregroundStyle(.secondary)
                     }
                     ForEach(floorWines) { wine in
@@ -283,17 +292,14 @@ struct FloorDetailSheet: View {
                 if !unplaced.isEmpty {
                     Section("Place bottles here") {
                         ForEach(unplaced) { wine in
-                            Button {
-                                wine.rack = rack
-                                wine.floorIndex = floor
-                            } label: {
-                                HStack {
-                                    WineRow(wine: wine)
-                                    Image(systemName: "plus.circle.fill")
-                                        .foregroundStyle(Color.accentColor)
-                                }
-                            }
-                            .buttonStyle(.plain)
+                            placementRow(wine)
+                        }
+                    }
+                }
+                if !elsewhere.isEmpty {
+                    Section("Move here from another shelf") {
+                        ForEach(elsewhere) { wine in
+                            placementRow(wine)
                         }
                     }
                 }
@@ -308,10 +314,103 @@ struct FloorDetailSheet: View {
         }
     }
 
+    /// Row for placing/moving a wine onto this shelf. Quantity 1 places
+    /// directly; more bottles get a "how many?" menu that can split the
+    /// entry across shelves.
+    @ViewBuilder
+    private func placementRow(_ wine: Wine) -> some View {
+        let label = HStack {
+            WineRow(wine: wine)
+            Image(systemName: "plus.circle.fill")
+                .foregroundStyle(Color.accentColor)
+        }
+        if wine.quantity <= 1 {
+            Button {
+                place(wine, count: 1)
+            } label: {
+                label
+            }
+            .buttonStyle(.plain)
+        } else {
+            Menu {
+                ForEach(placementCounts(for: wine.quantity), id: \.self) { n in
+                    Button("Place \(n) bottle\(n > 1 ? "s" : "")") {
+                        place(wine, count: n)
+                    }
+                }
+                Button("Place all \(wine.quantity)") {
+                    place(wine, count: wine.quantity)
+                }
+            } label: {
+                label
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func placementCounts(for quantity: Int) -> [Int] {
+        quantity <= 12
+            ? Array(1..<quantity)
+            : [1, 2, 3, 6, 12].filter { $0 < quantity }
+    }
+
+    /// Puts `count` bottles of `wine` on this shelf. A partial count splits
+    /// the wine into a second entry; identical wines landing on the same
+    /// shelf are merged back together.
+    private func place(_ wine: Wine, count: Int) {
+        let n = min(count, wine.quantity)
+        guard n > 0 else { return }
+        if n == wine.quantity {
+            wine.rack = rack
+            wine.floorIndex = floor
+            mergeIntoTwin(wine)
+        } else {
+            wine.quantity -= n
+            let moved = Wine(
+                name: wine.name,
+                producer: wine.producer,
+                vintage: wine.vintage,
+                color: wine.color,
+                region: wine.region,
+                country: wine.country,
+                grapeVarieties: wine.grapeVarieties,
+                appellation: wine.appellation,
+                quantity: n,
+                notes: wine.notes,
+                dateAdded: wine.dateAdded
+            )
+            moved.cellar = wine.cellar
+            moved.rack = rack
+            moved.floorIndex = floor
+            mergeIntoTwin(moved, insertIfUnique: true)
+        }
+    }
+
+    /// If an identical wine already sits on this shelf, fold `wine` into it.
+    private func mergeIntoTwin(_ wine: Wine, insertIfUnique: Bool = false) {
+        let twin = allWines.first {
+            $0.persistentModelID != wine.persistentModelID
+                && $0.cellar?.persistentModelID == wine.cellar?.persistentModelID
+                && $0.mergeKey == wine.mergeKey
+                && $0.rack?.persistentModelID == rack.persistentModelID
+                && $0.floorIndex == floor
+        }
+        if let twin {
+            twin.quantity += wine.quantity
+            if insertIfUnique {
+                // Never inserted; just drop the temporary instance.
+            } else {
+                modelContext.delete(wine)
+            }
+        } else if insertIfUnique {
+            modelContext.insert(wine)
+        }
+    }
+
     private var nameSection: some View {
-        Section("Floor name") {
+        Section("Shelf name") {
             TextField(
-                "Floor \(floor + 1)",
+                "Shelf \(floor + 1)",
                 text: Binding(
                     get: { rack.customFloorName(floor) },
                     set: { rack.setFloorName($0, at: floor) }
