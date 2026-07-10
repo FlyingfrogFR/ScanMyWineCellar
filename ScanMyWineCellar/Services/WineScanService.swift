@@ -30,8 +30,21 @@ enum WineScanError: LocalizedError {
     }
 }
 
-/// Sends cellar photos to the Anthropic Messages API and returns the list of
-/// wines identified across all photos, deduplicated by the model.
+/// A storage unit detected in a photo of the cellar.
+struct RackEstimate: Codable {
+    let shelfCount: Int
+    let bottlesPerShelf: Int
+    let suggestedName: String
+
+    enum CodingKeys: String, CodingKey {
+        case shelfCount = "shelf_count"
+        case bottlesPerShelf = "bottles_per_shelf"
+        case suggestedName = "suggested_name"
+    }
+}
+
+/// Talks to the Anthropic Messages API: identifies wines across photos and
+/// estimates the physical structure (shelves, capacity) of the cellar.
 struct WineScanService {
     static let model = "claude-opus-4-8"
 
@@ -39,7 +52,9 @@ struct WineScanService {
     /// size and it keeps each image well under the API's per-image limit.
     private static let maxImageDimension: CGFloat = 2048
 
-    private static let systemPrompt = """
+    // MARK: - Wine identification
+
+    private static let winesSystemPrompt = """
     You are a sommelier's assistant. You are given one or more photos of wine \
     bottles — typically several bottles per photo, on racks or shelves in a \
     private cellar. Identify every bottle whose label or capsule is readable \
@@ -62,7 +77,7 @@ struct WineScanService {
     unreadable) rather than guessing blindly.
     """
 
-    private static let outputSchema: [String: Any] = [
+    private static let winesSchema: [String: Any] = [
         "type": "object",
         "properties": [
             "wines": [
@@ -90,11 +105,96 @@ struct WineScanService {
     ]
 
     func scan(images: [UIImage], apiKey: String) async throws -> [ScannedWine] {
+        let text = try await Self.visionRequest(
+            images: images,
+            system: Self.winesSystemPrompt,
+            userText: "Identify all the wine bottles in these \(images.count) photo(s) of my cellar.",
+            schema: Self.winesSchema,
+            apiKey: apiKey
+        )
+        guard let data = text.data(using: .utf8) else { throw WineScanError.emptyResponse }
+        do {
+            struct ScanResult: Codable { let wines: [ScannedWine] }
+            return try JSONDecoder().decode(ScanResult.self, from: data).wines
+        } catch {
+            throw WineScanError.decodingFailed(error.localizedDescription)
+        }
+    }
+
+    // MARK: - Cellar structure
+
+    private static let structureSystemPrompt = """
+    You are given a photo of wine storage — a wine cabinet (such as a EuroCave), \
+    a wine fridge, or cellar racks. Identify each distinct storage unit visible \
+    in the photo.
+
+    For each unit:
+    - Count its shelves (levels), from bottom to top. Count every level that \
+    can hold bottles, including the bottom of the cabinet if bottles rest there.
+    - Estimate how many bottles fit side by side on ONE shelf: use the widest \
+    clearly visible shelf and count positions (slots), not just the bottles \
+    currently present.
+    - Suggest a short, friendly name, e.g. "EuroCave", "Wine fridge", \
+    "Wall rack left".
+
+    Only describe structure you can clearly see. If only part of a unit is \
+    visible, estimate from the visible part.
+    """
+
+    private static let structureSchema: [String: Any] = [
+        "type": "object",
+        "properties": [
+            "racks": [
+                "type": "array",
+                "items": [
+                    "type": "object",
+                    "properties": [
+                        "shelf_count": ["type": "integer", "description": "Number of shelf levels in this unit"],
+                        "bottles_per_shelf": ["type": "integer", "description": "Bottle positions per shelf, front row only"],
+                        "suggested_name": ["type": "string"],
+                    ],
+                    "required": ["shelf_count", "bottles_per_shelf", "suggested_name"],
+                    "additionalProperties": false,
+                ],
+            ],
+        ],
+        "required": ["racks"],
+        "additionalProperties": false,
+    ]
+
+    func analyzeStructure(image: UIImage, apiKey: String) async throws -> [RackEstimate] {
+        let text = try await Self.visionRequest(
+            images: [image],
+            system: Self.structureSystemPrompt,
+            userText: "Describe the wine storage in this photo.",
+            schema: Self.structureSchema,
+            apiKey: apiKey
+        )
+        guard let data = text.data(using: .utf8) else { throw WineScanError.emptyResponse }
+        do {
+            struct StructureResult: Codable { let racks: [RackEstimate] }
+            return try JSONDecoder().decode(StructureResult.self, from: data).racks
+        } catch {
+            throw WineScanError.decodingFailed(error.localizedDescription)
+        }
+    }
+
+    // MARK: - Shared plumbing
+
+    /// Sends images + prompt with a JSON schema and returns the structured
+    /// JSON text from the response.
+    private static func visionRequest(
+        images: [UIImage],
+        system: String,
+        userText: String,
+        schema: [String: Any],
+        apiKey: String
+    ) async throws -> String {
         guard !apiKey.isEmpty else { throw WineScanError.missingAPIKey }
 
         var content: [[String: Any]] = []
         for image in images {
-            guard let jpeg = Self.downscaledJPEG(image) else {
+            guard let jpeg = downscaledJPEG(image) else {
                 throw WineScanError.imageEncodingFailed
             }
             content.append([
@@ -106,19 +206,16 @@ struct WineScanService {
                 ],
             ])
         }
-        content.append([
-            "type": "text",
-            "text": "Identify all the wine bottles in these \(images.count) photo(s) of my cellar.",
-        ])
+        content.append(["type": "text", "text": userText])
 
         let body: [String: Any] = [
-            "model": Self.model,
+            "model": model,
             "max_tokens": 16000,
-            "system": Self.systemPrompt,
+            "system": system,
             "output_config": [
                 "format": [
                     "type": "json_schema",
-                    "schema": Self.outputSchema,
+                    "schema": schema,
                 ],
             ],
             "messages": [
@@ -157,17 +254,10 @@ struct WineScanService {
             break
         }
 
-        guard let text = message.content.first(where: { $0.type == "text" })?.text,
-              let jsonData = text.data(using: .utf8) else {
+        guard let text = message.content.first(where: { $0.type == "text" })?.text else {
             throw WineScanError.emptyResponse
         }
-
-        do {
-            let result = try JSONDecoder().decode(ScanResult.self, from: jsonData)
-            return result.wines
-        } catch {
-            throw WineScanError.decodingFailed(error.localizedDescription)
-        }
+        return text
     }
 
     private static func downscaledJPEG(_ image: UIImage) -> Data? {
@@ -188,10 +278,6 @@ struct WineScanService {
 }
 
 // MARK: - API response types
-
-private struct ScanResult: Codable {
-    let wines: [ScannedWine]
-}
 
 private struct MessageResponse: Codable {
     struct ContentBlock: Codable {

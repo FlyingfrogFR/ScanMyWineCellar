@@ -14,6 +14,7 @@ struct CellarMapView: View {
     @State private var colorFilter: WineColor?
     @State private var selectedFloor: FloorRef?
     @State private var showRackEditor = false
+    @State private var showRackScan = false
 
     private var racks: [Rack] {
         allRacks.filter { $0.cellar?.persistentModelID == cellar.persistentModelID }
@@ -51,6 +52,9 @@ struct CellarMapView: View {
         .sheet(isPresented: $showRackEditor) {
             RackEditorView(cellar: cellar)
         }
+        .sheet(isPresented: $showRackScan) {
+            RackScanView(cellar: cellar)
+        }
     }
 
     private var setupState: some View {
@@ -60,11 +64,16 @@ struct CellarMapView: View {
             Text("Add your storage — a wine cabinet like a EuroCave counts as one rack, and its shelves are the levels. Tell the app how many shelves it has and roughly how many bottles fit per shelf, and the map will show where every wine lives.")
         } actions: {
             Button {
-                showRackEditor = true
+                showRackScan = true
             } label: {
-                Label("Add racks", systemImage: "plus")
+                Label("Photograph my cellar", systemImage: "camera.viewfinder")
             }
             .buttonStyle(.borderedProminent)
+            Button {
+                showRackEditor = true
+            } label: {
+                Label("Describe it manually", systemImage: "plus")
+            }
         }
     }
 

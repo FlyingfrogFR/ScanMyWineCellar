@@ -9,6 +9,8 @@ struct RackEditorView: View {
     @Query(sort: \Rack.orderIndex) private var allRacks: [Rack]
     let cellar: Cellar
 
+    @State private var showRackScan = false
+
     private var racks: [Rack] {
         allRacks.filter { $0.cellar?.persistentModelID == cellar.persistentModelID }
     }
@@ -64,6 +66,11 @@ struct RackEditorView: View {
                     } label: {
                         Label("Add rack", systemImage: "plus")
                     }
+                    Button {
+                        showRackScan = true
+                    } label: {
+                        Label("Add from a photo", systemImage: "camera.viewfinder")
+                    }
                 } footer: {
                     Text("A rack is one storage unit: a wine cabinet like a EuroCave, a wine fridge, or a wall of racks in a cellar. Its shelves are counted from the bottom. Most people need just one rack — rename it after your cabinet. Deleting a rack doesn't delete its wines; they move back to “Not placed”.")
                 }
@@ -74,6 +81,9 @@ struct RackEditorView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .sheet(isPresented: $showRackScan) {
+                RackScanView(cellar: cellar)
             }
         }
     }
