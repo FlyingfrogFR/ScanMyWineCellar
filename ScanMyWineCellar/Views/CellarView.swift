@@ -58,6 +58,7 @@ struct CellarView: View {
                     }
                 }
             }
+            .background(Color("CellarBackground"))
             .navigationTitle(selectedCellar?.name ?? "My Cellar")
             .navigationBarTitleDisplayMode(.large)
             .toolbarTitleMenu {
@@ -211,6 +212,7 @@ struct CellarView: View {
                     NavigationLink(value: wine.persistentModelID) {
                         WineRow(wine: wine)
                     }
+                    .listRowBackground(Color("CellarSurface"))
                     .swipeActions(edge: .leading) {
                         Button {
                             drinkOne(wine)
@@ -233,6 +235,7 @@ struct CellarView: View {
                 }
             }
         }
+        .scrollContentBackground(.hidden)
         .searchable(text: $searchText, prompt: "Search wines, regions, grapes…")
         .navigationDestination(for: PersistentIdentifier.self) { id in
             if let wine = wines.first(where: { $0.persistentModelID == id }) {

@@ -3,12 +3,21 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(\.dismiss) private var dismiss
 
+    @AppStorage("appearance") private var appearance = "system"
     @State private var apiKey = APIKeyStore.load()
     @State private var saved = false
 
     var body: some View {
         NavigationStack {
             Form {
+                Section("Appearance") {
+                    Picker("Theme", selection: $appearance) {
+                        Text("System").tag("system")
+                        Text("Light").tag("light")
+                        Text("Dark").tag("dark")
+                    }
+                    .pickerStyle(.segmented)
+                }
                 Section {
                     SecureField("sk-ant-…", text: $apiKey)
                         .textInputAutocapitalization(.never)

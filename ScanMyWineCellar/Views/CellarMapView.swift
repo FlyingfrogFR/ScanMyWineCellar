@@ -166,7 +166,7 @@ struct CellarMapView: View {
             }
         }
         .padding(10)
-        .background(Color(.secondarySystemBackground).opacity(0.6))
+        .background(Color("CellarSurface"))
         .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
@@ -208,7 +208,7 @@ struct CellarMapView: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 8)
             .frame(minWidth: CGFloat(capacity) * 17 + 16)
-            .background(Color(.systemBackground))
+            .background(Color("CellarCell"))
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay {
                 RoundedRectangle(cornerRadius: 8)
