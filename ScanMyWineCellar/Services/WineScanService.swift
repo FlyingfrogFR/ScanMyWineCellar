@@ -48,10 +48,6 @@ struct RackEstimate: Codable {
 struct WineScanService {
     static let model = "claude-opus-4-8"
 
-    /// Long edge target for uploaded photos. Claude reads labels fine at this
-    /// size and it keeps each image well under the API's per-image limit.
-    private static let maxImageDimension: CGFloat = 2048
-
     // MARK: - Wine identification
 
     private static let winesSystemPrompt = """
@@ -195,7 +191,7 @@ struct WineScanService {
 
         var content: [[String: Any]] = []
         for image in images {
-            guard let jpeg = downscaledJPEG(image) else {
+            guard let jpeg = ImageProcessing.uploadJPEG(image) else {
                 throw WineScanError.imageEncodingFailed
             }
             content.append([
@@ -261,21 +257,6 @@ struct WineScanService {
         return text
     }
 
-    private static func downscaledJPEG(_ image: UIImage) -> Data? {
-        let size = image.size
-        let longEdge = max(size.width, size.height)
-        guard longEdge > maxImageDimension else {
-            return image.jpegData(compressionQuality: 0.75)
-        }
-        let scale = maxImageDimension / longEdge
-        let newSize = CGSize(width: size.width * scale, height: size.height * scale)
-        let format = UIGraphicsImageRendererFormat.default()
-        format.scale = 1
-        let resized = UIGraphicsImageRenderer(size: newSize, format: format).image { _ in
-            image.draw(in: CGRect(origin: .zero, size: newSize))
-        }
-        return resized.jpegData(compressionQuality: 0.75)
-    }
 }
 
 // MARK: - API response types
