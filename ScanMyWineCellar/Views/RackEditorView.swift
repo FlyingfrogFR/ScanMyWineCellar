@@ -1,8 +1,8 @@
 import SwiftUI
 import SwiftData
 
-/// Configure the cellar's racks: how many, their names, floors, and
-/// bottles per floor.
+/// Configure the cellar's racks: how many, their names, shelves, and
+/// bottles per shelf.
 struct RackEditorView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -29,7 +29,7 @@ struct RackEditorView: View {
                             get: { rack.floorCount },
                             set: { newValue in
                                 rack.floorCount = newValue
-                                // Keep placed wines on a valid floor.
+                                // Keep placed wines on a valid shelf.
                                 for wine in rack.wines ?? [] where wine.floorIndex >= newValue {
                                     wine.floorIndex = newValue - 1
                                 }
@@ -59,6 +59,7 @@ struct RackEditorView: View {
                             Label("Delete rack", systemImage: "trash")
                         }
                     }
+                    .listRowBackground(Color.cellarSurface)
                 }
                 Section {
                     Button {
@@ -74,7 +75,9 @@ struct RackEditorView: View {
                 } footer: {
                     Text("A rack is one storage unit: a wine cabinet like a EuroCave, a wine fridge, or a wall of racks in a cellar. Its shelves are counted from the bottom. Most people need just one rack — rename it after your cabinet. Deleting a rack doesn't delete its wines; they move back to “Not placed”.")
                 }
+                .listRowBackground(Color.cellarSurface)
             }
+            .cellarChrome()
             .navigationTitle("Racks")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

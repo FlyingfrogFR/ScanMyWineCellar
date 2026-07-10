@@ -18,6 +18,7 @@ struct SettingsView: View {
                     }
                     .pickerStyle(.segmented)
                 }
+                .listRowBackground(Color.cellarSurface)
                 Section {
                     SecureField("sk-ant-…", text: $apiKey)
                         .textInputAutocapitalization(.never)
@@ -27,12 +28,15 @@ struct SettingsView: View {
                 } footer: {
                     Text("The key is stored only in this device's Keychain and is used to identify wines in your photos. Create one at console.anthropic.com under API Keys.")
                 }
+                .listRowBackground(Color.cellarSurface)
                 Section {
                     LabeledContent("Model", value: WineScanService.model)
                 } footer: {
                     Text("A typical scan of a few shelf photos costs a few cents.")
                 }
+                .listRowBackground(Color.cellarSurface)
             }
+            .cellarChrome()
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

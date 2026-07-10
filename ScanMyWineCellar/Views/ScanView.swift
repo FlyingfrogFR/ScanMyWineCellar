@@ -34,6 +34,7 @@ struct ScanView: View {
                 Spacer(minLength: 0)
                 bottomBar
             }
+            .background(Color.cellarBackground)
             .navigationTitle("Scan bottles")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
