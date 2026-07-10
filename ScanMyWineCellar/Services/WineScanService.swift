@@ -56,9 +56,10 @@ struct WineScanService {
 
     private static let winesSystemPrompt = """
     You are a sommelier's assistant. You are given one or more photos of wine \
-    bottles — typically several bottles per photo, on racks or shelves in a \
-    private cellar. Identify every bottle whose label or capsule is readable \
-    enough to make a confident or reasonable identification.
+    bottles from a private cellar — either standing on racks or shelves, or \
+    pulled out and laid together on a table or counter with labels facing up. \
+    Identify every bottle whose label or capsule is readable enough to make a \
+    confident or reasonable identification.
 
     Rules:
     - Group identical wines (same wine, same vintage) into a single entry and \

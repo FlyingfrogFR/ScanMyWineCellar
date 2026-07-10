@@ -182,7 +182,7 @@ struct CellarView: View {
         ContentUnavailableView {
             Label("This cellar is empty", systemImage: "wineglass")
         } description: {
-            Text("Photograph your wine racks — several bottles at once — and they'll be identified and added to \(selectedCellar?.name ?? "your cellar"). Tap the title above to switch or create cellars.")
+            Text("Photograph your bottles a shelf at a time — pull them out and lay them on a table if they're stored neck-out — and they'll be identified and added to \(selectedCellar?.name ?? "your cellar"). Tap the title above to switch or create cellars.")
         } actions: {
             Button {
                 showScan = true

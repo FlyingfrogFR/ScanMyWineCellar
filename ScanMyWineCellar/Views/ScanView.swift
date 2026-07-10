@@ -84,9 +84,9 @@ struct ScanView: View {
 
     private var instructions: some View {
         ContentUnavailableView {
-            Label("Photograph your racks", systemImage: "camera.viewfinder")
+            Label("Photograph your bottles", systemImage: "camera.viewfinder")
         } description: {
-            Text("Take a few photos covering your shelves — no need to shoot each bottle individually. Make sure labels are readable and avoid photographing the same shelf twice.")
+            Text("If your bottles are lying neck-out (wine cabinet), pull one shelf's bottles out and photograph them together on a table, labels up — then pick that shelf below so they're placed automatically. If labels are already visible in the rack, photograph the shelves directly. Several bottles per photo is the point.")
         }
         .padding(.top, 40)
     }
@@ -134,8 +134,8 @@ struct ScanView: View {
                     }
                 } label: {
                     Label(
-                        targetRack.map { "\($0.name) · \($0.floorName(targetFloor))" }
-                            ?? "Where are these bottles? (optional)",
+                        targetRack.map { "These bottles live on: \($0.name) · \($0.floorName(targetFloor))" }
+                            ?? "Which shelf do these bottles live on? (optional)",
                         systemImage: "mappin.and.ellipse"
                     )
                     .font(.subheadline)
