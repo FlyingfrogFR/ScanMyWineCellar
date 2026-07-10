@@ -35,8 +35,6 @@ struct CellarMapView: View {
                 map
             }
         }
-        .navigationTitle("Cellar map")
-        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {

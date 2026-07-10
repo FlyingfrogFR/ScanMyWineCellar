@@ -17,7 +17,7 @@ struct CellarView: View {
     @State private var showRenameCellar = false
     @State private var renameText = ""
     @State private var confirmDeleteCellar = false
-    @State private var showMap = false
+    @AppStorage("cellarViewMode") private var viewMode = "list"
 
     /// Wines belonging to the currently selected cellar.
     private var cellarWines: [Wine] {
@@ -39,11 +39,23 @@ struct CellarView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if cellarWines.isEmpty {
-                    emptyState
-                } else {
-                    wineList
+            VStack(spacing: 0) {
+                Picker("View", selection: $viewMode) {
+                    Text("List").tag("list")
+                    Text("Map").tag("map")
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal, 16)
+                .padding(.top, 4)
+                .padding(.bottom, 8)
+                Group {
+                    if viewMode == "map", let selectedCellar {
+                        CellarMapView(cellar: selectedCellar)
+                    } else if cellarWines.isEmpty {
+                        emptyState
+                    } else {
+                        wineList
+                    }
                 }
             }
             .navigationTitle(selectedCellar?.name ?? "My Cellar")
@@ -51,7 +63,6 @@ struct CellarView: View {
             .toolbarTitleMenu {
                 cellarMenu
             }
-            .searchable(text: $searchText, prompt: "Search wines, regions, grapes…")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
@@ -61,11 +72,6 @@ struct CellarView: View {
                     }
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    Button {
-                        showMap = true
-                    } label: {
-                        Image(systemName: "square.grid.3x2")
-                    }
                     Menu {
                         Button {
                             showManualAdd = true
@@ -86,11 +92,6 @@ struct CellarView: View {
                     } label: {
                         Image(systemName: "camera.viewfinder")
                     }
-                }
-            }
-            .navigationDestination(isPresented: $showMap) {
-                if let selectedCellar {
-                    CellarMapView(cellar: selectedCellar)
                 }
             }
             .sheet(isPresented: $showScan) {
@@ -232,6 +233,7 @@ struct CellarView: View {
                 }
             }
         }
+        .searchable(text: $searchText, prompt: "Search wines, regions, grapes…")
         .navigationDestination(for: PersistentIdentifier.self) { id in
             if let wine = wines.first(where: { $0.persistentModelID == id }) {
                 WineDetailView(wine: wine)
