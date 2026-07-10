@@ -46,7 +46,9 @@ struct ScanReviewView: View {
             } footer: {
                 Text("Tap a row to correct details or bottle counts. Uncheck anything that was misread.")
             }
+            .listRowBackground(Color.cellarSurface)
         }
+        .cellarChrome()
         .navigationTitle("Review scan")
         .navigationBarTitleDisplayMode(.inline)
         .safeAreaInset(edge: .bottom) {
@@ -166,18 +168,22 @@ private struct ScannedWineEditView: View {
                     }
                     VintageField(vintage: $wine.vintage)
                 }
+                .listRowBackground(Color.cellarSurface)
                 Section("Origin") {
                     TextField("Region", text: $wine.region)
                     TextField("Country", text: $wine.country)
                     TextField("Appellation", text: $wine.appellation)
                     TextField("Grape varieties", text: $wine.grapeVarieties)
                 }
+                .listRowBackground(Color.cellarSurface)
                 Section("Quantity") {
                     Stepper(value: $wine.quantity, in: 1...200) {
                         Text("\(wine.quantity) bottle(s)")
                     }
                 }
+                .listRowBackground(Color.cellarSurface)
             }
+            .cellarChrome()
             .navigationTitle("Edit wine")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

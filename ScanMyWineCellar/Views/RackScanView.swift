@@ -30,6 +30,7 @@ struct RackScanView: View {
                     photoStage
                 }
             }
+            .background(Color.cellarBackground)
             .navigationTitle("Scan cellar setup")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -193,6 +194,7 @@ struct RackScanView: View {
                         Text("Capacity: \(current[i].shelfCount) shelves × \(current[i].effectiveBottlesPerShelf) = \(capacity) bottles")
                     }
                 }
+                .listRowBackground(Color.cellarSurface)
             }
             Section {
                 Button {
@@ -207,7 +209,9 @@ struct RackScanView: View {
                     image = nil
                 }
             }
+            .listRowBackground(Color.cellarSurface)
         }
+        .cellarChrome()
     }
 
     private func binding(_ index: Int) -> Binding<RackDraft> {

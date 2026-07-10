@@ -8,11 +8,11 @@ struct WineDetailView: View {
     @Query(sort: \Rack.orderIndex) private var allRacks: [Rack]
     @Bindable var wine: Wine
 
+    @State private var confirmDelete = false
+
     private var cellarRacks: [Rack] {
         allRacks.filter { $0.cellar?.persistentModelID == wine.cellar?.persistentModelID }
     }
-
-    @State private var confirmDelete = false
 
     var body: some View {
         Form {
@@ -26,12 +26,14 @@ struct WineDetailView: View {
                 }
                 VintageField(vintage: $wine.vintage)
             }
+            .listRowBackground(Color.cellarSurface)
             Section("Origin") {
                 TextField("Region", text: $wine.region)
                 TextField("Country", text: $wine.country)
                 TextField("Appellation", text: $wine.appellation)
                 TextField("Grape varieties", text: $wine.grapeVarieties)
             }
+            .listRowBackground(Color.cellarSurface)
             if cellars.count > 1 {
                 Section("Cellar") {
                     Picker("Cellar", selection: Binding(
@@ -45,6 +47,7 @@ struct WineDetailView: View {
                         }
                     }
                 }
+                .listRowBackground(Color.cellarSurface)
             }
             if !cellarRacks.isEmpty {
                 Section("Location") {
@@ -69,6 +72,7 @@ struct WineDetailView: View {
                         }
                     }
                 }
+                .listRowBackground(Color.cellarSurface)
             }
             Section("In cellar") {
                 Stepper(value: $wine.quantity, in: 0...500) {
@@ -81,10 +85,12 @@ struct WineDetailView: View {
                 }
                 .disabled(wine.quantity == 0)
             }
+            .listRowBackground(Color.cellarSurface)
             Section("Notes") {
                 TextField("Tasting notes, storage location…", text: $wine.notes, axis: .vertical)
                     .lineLimit(3...8)
             }
+            .listRowBackground(Color.cellarSurface)
             Section {
                 LabeledContent("Added", value: wine.dateAdded.formatted(date: .abbreviated, time: .omitted))
                 Button(role: .destructive) {
@@ -93,7 +99,9 @@ struct WineDetailView: View {
                     Label("Remove from cellar", systemImage: "trash")
                 }
             }
+            .listRowBackground(Color.cellarSurface)
         }
+        .cellarChrome()
         .navigationTitle(wine.name)
         .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog("Remove this wine and all its bottles?", isPresented: $confirmDelete, titleVisibility: .visible) {

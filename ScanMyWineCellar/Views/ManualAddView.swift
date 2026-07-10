@@ -30,22 +30,27 @@ struct ManualAddView: View {
                     }
                     VintageField(vintage: $vintage)
                 }
+                .listRowBackground(Color.cellarSurface)
                 Section("Origin") {
                     TextField("Region", text: $region)
                     TextField("Country", text: $country)
                     TextField("Appellation", text: $appellation)
                     TextField("Grape varieties", text: $grapeVarieties)
                 }
+                .listRowBackground(Color.cellarSurface)
                 Section("Quantity") {
                     Stepper(value: $quantity, in: 1...500) {
                         Text("\(quantity) bottle(s)")
                     }
                 }
+                .listRowBackground(Color.cellarSurface)
                 Section("Notes") {
                     TextField("Tasting notes, storage location…", text: $notes, axis: .vertical)
                         .lineLimit(3...8)
                 }
+                .listRowBackground(Color.cellarSurface)
             }
+            .cellarChrome()
             .navigationTitle("Add wine")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {

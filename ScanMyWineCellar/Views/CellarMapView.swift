@@ -166,7 +166,7 @@ struct CellarMapView: View {
             }
         }
         .padding(10)
-        .background(Color(.secondarySystemBackground).opacity(0.6))
+        .background(Color("CellarSurface"))
         .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
@@ -208,7 +208,7 @@ struct CellarMapView: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 8)
             .frame(minWidth: CGFloat(capacity) * 17 + 16)
-            .background(Color(.systemBackground))
+            .background(Color("CellarCell"))
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay {
                 RoundedRectangle(cornerRadius: 8)
@@ -296,12 +296,14 @@ struct FloorDetailSheet: View {
                 } header: {
                     Text("\(bottleCount) of \(rack.bottlesPerFloor) bottles")
                 }
+                .listRowBackground(Color.cellarSurface)
                 if !unplaced.isEmpty {
                     Section("Place bottles here") {
                         ForEach(unplaced) { wine in
                             placementRow(wine)
                         }
                     }
+                    .listRowBackground(Color.cellarSurface)
                 }
                 if !elsewhere.isEmpty {
                     Section("Move here from another shelf") {
@@ -309,8 +311,10 @@ struct FloorDetailSheet: View {
                             placementRow(wine)
                         }
                     }
+                    .listRowBackground(Color.cellarSurface)
                 }
             }
+            .cellarChrome()
             .navigationTitle("\(rack.name) · \(rack.floorName(floor))")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -414,6 +418,7 @@ struct FloorDetailSheet: View {
         }
     }
 
+    @ViewBuilder
     private var nameSection: some View {
         Section("Shelf name") {
             TextField(
@@ -446,5 +451,6 @@ struct FloorDetailSheet: View {
                 .listRowSeparator(.hidden)
             }
         }
+        .listRowBackground(Color.cellarSurface)
     }
 }
