@@ -1,6 +1,10 @@
 import Foundation
 import SwiftData
 
+// LEGACY — the original SwiftData model, kept unchanged so LegacyMigrator
+// can open old stores. The app itself uses CDCellar (CoreDataModels.swift).
+// Do not modify: the declarations must keep matching the old store's schema.
+
 @Model
 final class Cellar {
     var name: String

@@ -1,14 +1,15 @@
 import SwiftUI
-import SwiftData
+import CoreData
 import PhotosUI
 
 /// Sets up racks from a photo of the cellar: the model counts shelves and
 /// estimates bottles per shelf; the user confirms or adjusts before creating.
 struct RackScanView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Rack.orderIndex) private var allRacks: [Rack]
-    let cellar: Cellar
+    @Environment(\.managedObjectContext) private var viewContext
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \CDRack.orderIndex, ascending: true)])
+    private var allRacks: FetchedResults<CDRack>
+    let cellar: CDCellar
 
     @State private var image: UIImage?
     @State private var pickerItem: PhotosPickerItem?
@@ -17,8 +18,8 @@ struct RackScanView: View {
     @State private var drafts: [RackDraft]?
     @State private var errorMessage: String?
 
-    private var existingRacks: [Rack] {
-        allRacks.filter { $0.cellar?.persistentModelID == cellar.persistentModelID }
+    private var existingRacks: [CDRack] {
+        allRacks.filter { $0.cellar?.objectID == cellar.objectID }
     }
 
     var body: some View {
@@ -227,17 +228,17 @@ struct RackScanView: View {
         var nextIndex = (existingRacks.map(\.orderIndex).max() ?? -1) + 1
         for draft in drafts where draft.include {
             var name = draft.name.trimmingCharacters(in: .whitespaces)
-            if name.isEmpty { name = Rack.nextDefaultName(existing: names) }
+            if name.isEmpty { name = CDRack.nextDefaultName(existing: names) }
             while names.contains(name) { name += " 2" }
             names.append(name)
-            let rack = Rack(
+            let rack = CDRack(
+                context: viewContext,
                 name: name,
                 orderIndex: nextIndex,
                 floorCount: draft.shelfCount,
                 bottlesPerFloor: draft.effectiveBottlesPerShelf
             )
             rack.cellar = cellar
-            modelContext.insert(rack)
             nextIndex += 1
         }
         dismiss()

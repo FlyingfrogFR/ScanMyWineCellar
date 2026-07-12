@@ -1,10 +1,10 @@
 import SwiftUI
-import SwiftData
+import CoreData
 
 struct ManualAddView: View {
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
-    let cellar: Cellar
+    let cellar: CDCellar
 
     @State private var name = ""
     @State private var producer = ""
@@ -59,7 +59,8 @@ struct ManualAddView: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Add") {
-                        let wine = Wine(
+                        let wine = CDWine(
+                            context: viewContext,
                             name: name,
                             producer: producer,
                             vintage: vintage,
@@ -72,7 +73,6 @@ struct ManualAddView: View {
                             notes: notes
                         )
                         wine.cellar = cellar
-                        modelContext.insert(wine)
                         dismiss()
                     }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)

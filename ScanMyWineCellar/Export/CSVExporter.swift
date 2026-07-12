@@ -3,7 +3,7 @@ import Foundation
 /// Builds a spreadsheet-friendly CSV of the cellar and writes it to a
 /// temporary file for the share sheet.
 enum CSVExporter {
-    static func export(_ wines: [Wine], cellarName: String = "MyWineCellar") throws -> URL {
+    static func export(_ wines: [CDWine], cellarName: String = "MyWineCellar") throws -> URL {
         var lines = ["Cellar,Location,Name,Producer,Vintage,Color,Region,Country,Appellation,Grape Varieties,Quantity,Notes,Date Added"]
         let dateFormatter = ISO8601DateFormatter()
         for wine in wines {

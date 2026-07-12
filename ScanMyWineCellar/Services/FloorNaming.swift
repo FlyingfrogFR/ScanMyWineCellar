@@ -3,7 +3,7 @@ import Foundation
 /// Suggests floor names from what's actually stored on the floor —
 /// dominant region, vintage range, color — always overridable by the user.
 enum FloorNaming {
-    static func suggestions(for wines: [Wine]) -> [String] {
+    static func suggestions(for wines: [CDWine]) -> [String] {
         guard !wines.isEmpty else { return [] }
         var out: [String] = []
 

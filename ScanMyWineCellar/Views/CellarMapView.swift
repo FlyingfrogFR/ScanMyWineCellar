@@ -1,14 +1,16 @@
 import SwiftUI
-import SwiftData
+import CoreData
 
 /// Whole-cellar overview (design C): all racks side by side, bottle dots
 /// colored by wine, floors pop out on tap, filter chips highlight matches
 /// across the entire map.
 struct CellarMapView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Rack.orderIndex) private var allRacks: [Rack]
-    @Query(sort: \Wine.name) private var allWines: [Wine]
-    let cellar: Cellar
+    @Environment(\.managedObjectContext) private var viewContext
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \CDRack.orderIndex, ascending: true)])
+    private var allRacks: FetchedResults<CDRack>
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \CDWine.name, ascending: true)])
+    private var allWines: FetchedResults<CDWine>
+    let cellar: CDCellar
 
     @State private var searchText = ""
     @State private var colorFilter: WineColor?
@@ -16,15 +18,15 @@ struct CellarMapView: View {
     @State private var showRackEditor = false
     @State private var showRackScan = false
 
-    private var racks: [Rack] {
-        allRacks.filter { $0.cellar?.persistentModelID == cellar.persistentModelID }
+    private var racks: [CDRack] {
+        allRacks.filter { $0.cellar?.objectID == cellar.objectID }
     }
 
-    private var wines: [Wine] {
-        allWines.filter { $0.cellar?.persistentModelID == cellar.persistentModelID }
+    private var wines: [CDWine] {
+        allWines.filter { $0.cellar?.objectID == cellar.objectID }
     }
 
-    private var unplaced: [Wine] { wines.filter { $0.rack == nil } }
+    private var unplaced: [CDWine] { wines.filter { $0.rack == nil } }
 
     private var filterActive: Bool { colorFilter != nil || !searchText.isEmpty }
 
@@ -143,7 +145,7 @@ struct CellarMapView: View {
         }
     }
 
-    private func matches(_ wine: Wine) -> Bool {
+    private func matches(_ wine: CDWine) -> Bool {
         if let colorFilter, wine.color != colorFilter { return false }
         if !searchText.isEmpty {
             let haystack = "\(wine.name) \(wine.producer) \(wine.region) \(wine.country) \(wine.appellation) \(wine.grapeVarieties) \(wine.vintageLabel)"
@@ -152,11 +154,11 @@ struct CellarMapView: View {
         return true
     }
 
-    private func winesOn(_ rack: Rack, floor: Int) -> [Wine] {
-        wines.filter { $0.rack?.persistentModelID == rack.persistentModelID && $0.floorIndex == floor }
+    private func winesOn(_ rack: CDRack, floor: Int) -> [CDWine] {
+        wines.filter { $0.rack?.objectID == rack.objectID && $0.floorIndex == floor }
     }
 
-    private func rackColumn(_ rack: Rack) -> some View {
+    private func rackColumn(_ rack: CDRack) -> some View {
         VStack(spacing: 6) {
             Text(rack.name)
                 .font(.caption.bold())
@@ -170,7 +172,7 @@ struct CellarMapView: View {
         .clipShape(RoundedRectangle(cornerRadius: 14))
     }
 
-    private func floorCell(rack: Rack, floor: Int) -> some View {
+    private func floorCell(rack: CDRack, floor: Int) -> some View {
         let floorWines = winesOn(rack, floor: floor)
         let bottles: [(color: WineColor, hit: Bool)] = floorWines.flatMap { wine in
             Array(repeating: (wine.color, matches(wine)), count: wine.quantity)
@@ -243,35 +245,36 @@ struct CellarMapView: View {
 }
 
 struct FloorRef: Identifiable {
-    let rack: Rack
+    let rack: CDRack
     let floor: Int
-    var id: String { "\(floor)|\(String(describing: rack.persistentModelID))" }
+    var id: String { "\(floor)|\(rack.objectID.uriRepresentation().absoluteString)" }
 }
 
 /// The pop-out: contents of one floor, rename with suggestions, and a
 /// "place bottles here" list for unplaced wines.
 struct FloorDetailSheet: View {
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
-    @Query(sort: \Wine.name) private var allWines: [Wine]
-    let rack: Rack
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \CDWine.name, ascending: true)])
+    private var allWines: FetchedResults<CDWine>
+    @ObservedObject var rack: CDRack
     let floor: Int
-    let cellar: Cellar
+    let cellar: CDCellar
 
-    private var floorWines: [Wine] {
-        allWines.filter { $0.rack?.persistentModelID == rack.persistentModelID && $0.floorIndex == floor }
+    private var floorWines: [CDWine] {
+        allWines.filter { $0.rack?.objectID == rack.objectID && $0.floorIndex == floor }
     }
 
-    private var unplaced: [Wine] {
-        allWines.filter { $0.cellar?.persistentModelID == cellar.persistentModelID && $0.rack == nil }
+    private var unplaced: [CDWine] {
+        allWines.filter { $0.cellar?.objectID == cellar.objectID && $0.rack == nil }
     }
 
     /// Wines in the same cellar sitting on a different shelf — movable here.
-    private var elsewhere: [Wine] {
+    private var elsewhere: [CDWine] {
         allWines.filter {
-            $0.cellar?.persistentModelID == cellar.persistentModelID
+            $0.cellar?.objectID == cellar.objectID
                 && $0.rack != nil
-                && !($0.rack?.persistentModelID == rack.persistentModelID && $0.floorIndex == floor)
+                && !($0.rack?.objectID == rack.objectID && $0.floorIndex == floor)
         }
     }
 
@@ -329,7 +332,7 @@ struct FloorDetailSheet: View {
     /// directly; more bottles get a "how many?" menu that can split the
     /// entry across shelves.
     @ViewBuilder
-    private func placementRow(_ wine: Wine) -> some View {
+    private func placementRow(_ wine: CDWine) -> some View {
         let label = HStack {
             WineRow(wine: wine)
             Image(systemName: "plus.circle.fill")
@@ -368,53 +371,51 @@ struct FloorDetailSheet: View {
     /// Puts `count` bottles of `wine` on this shelf. A partial count splits
     /// the wine into a second entry; identical wines landing on the same
     /// shelf are merged back together.
-    private func place(_ wine: Wine, count: Int) {
+    private func place(_ wine: CDWine, count: Int) {
         let n = min(count, wine.quantity)
         guard n > 0 else { return }
         if n == wine.quantity {
-            wine.rack = rack
-            wine.floorIndex = floor
-            mergeIntoTwin(wine)
+            if let twin = twin(of: wine) {
+                twin.quantity += n
+                viewContext.delete(wine)
+            } else {
+                wine.rack = rack
+                wine.floorIndex = floor
+            }
         } else {
             wine.quantity -= n
-            let moved = Wine(
-                name: wine.name,
-                producer: wine.producer,
-                vintage: wine.vintage,
-                color: wine.color,
-                region: wine.region,
-                country: wine.country,
-                grapeVarieties: wine.grapeVarieties,
-                appellation: wine.appellation,
-                quantity: n,
-                notes: wine.notes,
-                dateAdded: wine.dateAdded
-            )
-            moved.cellar = wine.cellar
-            moved.rack = rack
-            moved.floorIndex = floor
-            mergeIntoTwin(moved, insertIfUnique: true)
+            if let twin = twin(of: wine) {
+                twin.quantity += n
+            } else {
+                let moved = CDWine(
+                    context: viewContext,
+                    name: wine.name,
+                    producer: wine.producer,
+                    vintage: wine.vintage,
+                    color: wine.color,
+                    region: wine.region,
+                    country: wine.country,
+                    grapeVarieties: wine.grapeVarieties,
+                    appellation: wine.appellation,
+                    quantity: n,
+                    notes: wine.notes,
+                    dateAdded: wine.dateAdded
+                )
+                moved.cellar = wine.cellar
+                moved.rack = rack
+                moved.floorIndex = floor
+            }
         }
     }
 
-    /// If an identical wine already sits on this shelf, fold `wine` into it.
-    private func mergeIntoTwin(_ wine: Wine, insertIfUnique: Bool = false) {
-        let twin = allWines.first {
-            $0.persistentModelID != wine.persistentModelID
-                && $0.cellar?.persistentModelID == wine.cellar?.persistentModelID
+    /// An identical wine already sitting on this shelf, if any.
+    private func twin(of wine: CDWine) -> CDWine? {
+        allWines.first {
+            $0.objectID != wine.objectID
+                && $0.cellar?.objectID == wine.cellar?.objectID
                 && $0.mergeKey == wine.mergeKey
-                && $0.rack?.persistentModelID == rack.persistentModelID
+                && $0.rack?.objectID == rack.objectID
                 && $0.floorIndex == floor
-        }
-        if let twin {
-            twin.quantity += wine.quantity
-            if insertIfUnique {
-                // Never inserted; just drop the temporary instance.
-            } else {
-                modelContext.delete(wine)
-            }
-        } else if insertIfUnique {
-            modelContext.insert(wine)
         }
     }
 

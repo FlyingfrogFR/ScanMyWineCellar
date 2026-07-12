@@ -1,18 +1,19 @@
 import SwiftUI
-import SwiftData
+import CoreData
 
 /// Configure the cellar's racks: how many, their names, shelves, and
 /// bottles per shelf.
 struct RackEditorView: View {
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
-    @Query(sort: \Rack.orderIndex) private var allRacks: [Rack]
-    let cellar: Cellar
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \CDRack.orderIndex, ascending: true)])
+    private var allRacks: FetchedResults<CDRack>
+    let cellar: CDCellar
 
     @State private var showRackScan = false
 
-    private var racks: [Rack] {
-        allRacks.filter { $0.cellar?.persistentModelID == cellar.persistentModelID }
+    private var racks: [CDRack] {
+        allRacks.filter { $0.cellar?.objectID == cellar.objectID }
     }
 
     var body: some View {
@@ -30,7 +31,7 @@ struct RackEditorView: View {
                             set: { newValue in
                                 rack.floorCount = newValue
                                 // Keep placed wines on a valid shelf.
-                                for wine in rack.wines ?? [] where wine.floorIndex >= newValue {
+                                for wine in rack.winesArray where wine.floorIndex >= newValue {
                                     wine.floorIndex = newValue - 1
                                 }
                             }
@@ -92,21 +93,21 @@ struct RackEditorView: View {
     }
 
     private func addRack() {
-        let rack = Rack(
-            name: Rack.nextDefaultName(existing: racks.map(\.name)),
+        let rack = CDRack(
+            context: viewContext,
+            name: CDRack.nextDefaultName(existing: racks.map(\.name)),
             orderIndex: (racks.map(\.orderIndex).max() ?? -1) + 1
         )
         rack.cellar = cellar
-        modelContext.insert(rack)
     }
 
-    private func deleteRack(_ rack: Rack) {
+    private func deleteRack(_ rack: CDRack) {
         // Nullify happens via the relationship's delete rule; be explicit
         // so the map updates immediately.
-        for wine in rack.wines ?? [] {
+        for wine in rack.winesArray {
             wine.rack = nil
             wine.floorIndex = 0
         }
-        modelContext.delete(rack)
+        viewContext.delete(rack)
     }
 }

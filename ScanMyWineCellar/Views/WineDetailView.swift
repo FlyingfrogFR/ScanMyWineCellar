@@ -1,20 +1,32 @@
 import SwiftUI
-import SwiftData
+import CoreData
 
 struct WineDetailView: View {
-    @Environment(\.modelContext) private var modelContext
+    @Environment(\.managedObjectContext) private var viewContext
     @Environment(\.dismiss) private var dismiss
-    @Query(sort: \Cellar.dateCreated) private var cellars: [Cellar]
-    @Query(sort: \Rack.orderIndex) private var allRacks: [Rack]
-    @Bindable var wine: Wine
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \CDCellar.dateCreated, ascending: true)])
+    private var cellars: FetchedResults<CDCellar>
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \CDRack.orderIndex, ascending: true)])
+    private var allRacks: FetchedResults<CDRack>
+    @ObservedObject var wine: CDWine
 
     @State private var confirmDelete = false
 
-    private var cellarRacks: [Rack] {
-        allRacks.filter { $0.cellar?.persistentModelID == wine.cellar?.persistentModelID }
+    private var cellarRacks: [CDRack] {
+        allRacks.filter { $0.cellar?.objectID == wine.cellar?.objectID }
     }
 
     var body: some View {
+        // The wine can be deleted (here or on the map) while this view is
+        // still dismissing; touching its properties then would crash.
+        if wine.isDeleted || wine.managedObjectContext == nil {
+            Color.clear
+        } else {
+            form
+        }
+    }
+
+    private var form: some View {
         Form {
             Section("Wine") {
                 TextField("Name", text: $wine.name)
@@ -37,13 +49,13 @@ struct WineDetailView: View {
             if cellars.count > 1 {
                 Section("Cellar") {
                     Picker("Cellar", selection: Binding(
-                        get: { wine.cellar?.persistentModelID },
+                        get: { wine.cellar?.objectID },
                         set: { id in
-                            wine.cellar = cellars.first { $0.persistentModelID == id }
+                            wine.cellar = cellars.first { $0.objectID == id }
                         }
                     )) {
                         ForEach(cellars) { cellar in
-                            Text(cellar.name).tag(Optional(cellar.persistentModelID))
+                            Text(cellar.name).tag(Optional(cellar.objectID))
                         }
                     }
                 }
@@ -52,16 +64,16 @@ struct WineDetailView: View {
             if !cellarRacks.isEmpty {
                 Section("Location") {
                     Picker("Rack", selection: Binding(
-                        get: { wine.rack?.persistentModelID },
+                        get: { wine.rack?.objectID },
                         set: { id in
-                            wine.rack = cellarRacks.first { $0.persistentModelID == id }
+                            wine.rack = cellarRacks.first { $0.objectID == id }
                             let maxFloor = max(0, (wine.rack?.floorCount ?? 1) - 1)
                             wine.floorIndex = min(wine.floorIndex, maxFloor)
                         }
                     )) {
-                        Text("Not placed").tag(nil as PersistentIdentifier?)
+                        Text("Not placed").tag(nil as NSManagedObjectID?)
                         ForEach(cellarRacks) { rack in
-                            Text(rack.name).tag(Optional(rack.persistentModelID))
+                            Text(rack.name).tag(Optional(rack.objectID))
                         }
                     }
                     if let rack = wine.rack {
@@ -106,7 +118,7 @@ struct WineDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .confirmationDialog("Remove this wine and all its bottles?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Remove", role: .destructive) {
-                modelContext.delete(wine)
+                viewContext.delete(wine)
                 dismiss()
             }
         }

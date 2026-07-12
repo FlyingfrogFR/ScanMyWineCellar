@@ -1,15 +1,16 @@
 import SwiftUI
-import SwiftData
+import CoreData
 
 /// Shows what the scan found and lets the user fix mistakes before the wines
 /// are added to the cellar.
 struct ScanReviewView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query private var existingWines: [Wine]
+    @Environment(\.managedObjectContext) private var viewContext
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \CDWine.name, ascending: true)])
+    private var existingWines: FetchedResults<CDWine>
 
     @State var wines: [ScannedWine]
-    let cellar: Cellar
-    let rack: Rack?
+    let cellar: CDCellar
+    let rack: CDRack?
     let floor: Int
     let onDone: () -> Void
 
@@ -17,8 +18,8 @@ struct ScanReviewView: View {
 
     init(
         wines: [ScannedWine],
-        cellar: Cellar,
-        rack: Rack? = nil,
+        cellar: CDCellar,
+        rack: CDRack? = nil,
         floor: Int = 0,
         onDone: @escaping () -> Void
     ) {
@@ -73,24 +74,23 @@ struct ScanReviewView: View {
 
     private func addToCellar() {
         for scanned in wines where scanned.include {
-            let wine = scanned.toWine()
             let existing = existingWines.first {
-                $0.cellar?.persistentModelID == cellar.persistentModelID
-                    && $0.mergeKey == wine.mergeKey
+                $0.cellar?.objectID == cellar.objectID
+                    && $0.mergeKey == scanned.mergeKey
             }
             if let existing {
-                existing.quantity += wine.quantity
+                existing.quantity += scanned.quantity
                 if existing.rack == nil, let rack {
                     existing.rack = rack
                     existing.floorIndex = floor
                 }
             } else {
+                let wine = scanned.toWine(in: viewContext)
                 wine.cellar = cellar
                 if let rack {
                     wine.rack = rack
                     wine.floorIndex = floor
                 }
-                modelContext.insert(wine)
             }
         }
         onDone()

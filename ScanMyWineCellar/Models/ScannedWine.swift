@@ -1,3 +1,4 @@
+import CoreData
 import Foundation
 
 /// A wine detected in a scan, editable in the review screen before it is
@@ -54,8 +55,16 @@ struct ScannedWine: Identifiable, Codable, Hashable {
         try c.encode(quantity, forKey: .quantity)
     }
 
-    func toWine() -> Wine {
-        Wine(
+    /// Matches CDWine.mergeKey so scans can be folded into existing entries.
+    var mergeKey: String {
+        [name.lowercased(), producer.lowercased(), String(vintage)]
+            .joined(separator: "|")
+            .trimmingCharacters(in: .whitespaces)
+    }
+
+    func toWine(in context: NSManagedObjectContext) -> CDWine {
+        CDWine(
+            context: context,
             name: name,
             producer: producer,
             vintage: vintage,

@@ -1,12 +1,14 @@
 import SwiftUI
-import SwiftData
+import CoreData
 
 struct CellarView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Wine.name) private var wines: [Wine]
-    @Query(sort: \Cellar.dateCreated) private var cellars: [Cellar]
+    @Environment(\.managedObjectContext) private var viewContext
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \CDWine.name, ascending: true)])
+    private var wines: FetchedResults<CDWine>
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \CDCellar.dateCreated, ascending: true)])
+    private var cellars: FetchedResults<CDCellar>
 
-    @State private var selectedCellar: Cellar?
+    @State private var selectedCellar: CDCellar?
     @State private var searchText = ""
     @State private var colorFilter: WineColor?
     @State private var showScan = false
@@ -20,11 +22,11 @@ struct CellarView: View {
     @AppStorage("cellarViewMode") private var viewMode = "list"
 
     /// Wines belonging to the currently selected cellar.
-    private var cellarWines: [Wine] {
-        wines.filter { $0.cellar?.persistentModelID == selectedCellar?.persistentModelID }
+    private var cellarWines: [CDWine] {
+        wines.filter { $0.cellar?.objectID == selectedCellar?.objectID }
     }
 
-    private var filteredWines: [Wine] {
+    private var filteredWines: [CDWine] {
         cellarWines.filter { wine in
             if let colorFilter, wine.color != colorFilter { return false }
             if searchText.isEmpty { return true }
@@ -151,7 +153,7 @@ struct CellarView: View {
             Button {
                 selectedCellar = cellar
             } label: {
-                if cellar.persistentModelID == selectedCellar?.persistentModelID {
+                if cellar.objectID == selectedCellar?.objectID {
                     Label(cellar.name, systemImage: "checkmark")
                 } else {
                     Text(cellar.name)
@@ -209,7 +211,7 @@ struct CellarView: View {
             }
             Section {
                 ForEach(filteredWines) { wine in
-                    NavigationLink(value: wine.persistentModelID) {
+                    NavigationLink(value: wine) {
                         WineRow(wine: wine)
                     }
                     .listRowBackground(Color("CellarSurface"))
@@ -223,7 +225,7 @@ struct CellarView: View {
                     }
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
-                            modelContext.delete(wine)
+                            viewContext.delete(wine)
                         } label: {
                             Label("Delete", systemImage: "trash")
                         }
@@ -237,10 +239,8 @@ struct CellarView: View {
         }
         .scrollContentBackground(.hidden)
         .searchable(text: $searchText, prompt: "Search wines, regions, grapes…")
-        .navigationDestination(for: PersistentIdentifier.self) { id in
-            if let wine = wines.first(where: { $0.persistentModelID == id }) {
-                WineDetailView(wine: wine)
-            }
+        .navigationDestination(for: CDWine.self) { wine in
+            WineDetailView(wine: wine)
         }
     }
 
@@ -301,8 +301,7 @@ struct CellarView: View {
 
     private func bootstrap() {
         if cellars.isEmpty {
-            let cellar = Cellar(name: "My Cellar")
-            modelContext.insert(cellar)
+            let cellar = CDCellar(context: viewContext, name: "My Cellar")
             selectedCellar = cellar
         } else if selectedCellar == nil {
             selectedCellar = cellars.first
@@ -316,23 +315,25 @@ struct CellarView: View {
     }
 
     private func addCellar() {
-        let cellar = Cellar(name: Cellar.nextDefaultName(existing: cellars.map(\.name)))
-        modelContext.insert(cellar)
+        let cellar = CDCellar(
+            context: viewContext,
+            name: CDCellar.nextDefaultName(existing: cellars.map(\.name))
+        )
         selectedCellar = cellar
     }
 
     private func deleteSelectedCellar() {
         guard let cellar = selectedCellar, cellars.count > 1 else { return }
-        let deletedID = cellar.persistentModelID
-        modelContext.delete(cellar)
-        selectedCellar = cellars.first { $0.persistentModelID != deletedID }
+        let deletedID = cellar.objectID
+        viewContext.delete(cellar)
+        selectedCellar = cellars.first { $0.objectID != deletedID }
     }
 
-    private func drinkOne(_ wine: Wine) {
+    private func drinkOne(_ wine: CDWine) {
         if wine.quantity > 1 {
             wine.quantity -= 1
         } else {
-            modelContext.delete(wine)
+            viewContext.delete(wine)
         }
     }
 
@@ -349,7 +350,7 @@ struct CellarView: View {
 }
 
 struct WineRow: View {
-    let wine: Wine
+    @ObservedObject var wine: CDWine
 
     var body: some View {
         HStack(spacing: 12) {
@@ -388,5 +389,5 @@ extension URL: @retroactive Identifiable {
 
 #Preview {
     CellarView()
-        .modelContainer(for: [Wine.self, Cellar.self, Rack.self], inMemory: true)
+        .environment(\.managedObjectContext, PersistenceController(inMemory: true).container.viewContext)
 }

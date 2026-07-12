@@ -1,17 +1,18 @@
 import SwiftUI
-import SwiftData
+import CoreData
 import PhotosUI
 
 struct ScanView: View {
     @Environment(\.dismiss) private var dismiss
-    @Query(sort: \Rack.orderIndex) private var allRacks: [Rack]
-    let cellar: Cellar
+    @FetchRequest(sortDescriptors: [NSSortDescriptor(keyPath: \CDRack.orderIndex, ascending: true)])
+    private var allRacks: FetchedResults<CDRack>
+    let cellar: CDCellar
 
-    @State private var targetRack: Rack?
+    @State private var targetRack: CDRack?
     @State private var targetFloor = 0
 
-    private var racks: [Rack] {
-        allRacks.filter { $0.cellar?.persistentModelID == cellar.persistentModelID }
+    private var racks: [CDRack] {
+        allRacks.filter { $0.cellar?.objectID == cellar.objectID }
     }
 
     @State private var pickerItems: [PhotosPickerItem] = []
