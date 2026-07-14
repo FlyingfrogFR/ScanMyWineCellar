@@ -1,13 +1,20 @@
+import CloudKit
 import CoreData
 import UIKit
 
-/// The Core Data stack. NSPersistentCloudKitContainer is used so the store
-/// can later sync and be shared via CloudKit; no CloudKit options are
-/// attached yet, so today it behaves as a purely local store.
+/// The Core Data stack, mirrored to CloudKit. Two stores are loaded: the
+/// private store (your own cellars, synced across your devices) and the
+/// shared store (cellars other people shared with you via CKShare). Both
+/// feed the same viewContext, so shared cellars appear in the app
+/// automatically. Without an iCloud account the app simply works locally.
 final class PersistenceController {
     static let shared = PersistenceController()
 
+    static let cloudKitContainerID = "iCloud.com.scanmywinecellar.app"
+
     let container: NSPersistentCloudKitContainer
+    private(set) var privateStore: NSPersistentStore?
+    private(set) var sharedStore: NSPersistentStore?
     private var saveTask: Task<Void, Never>?
 
     init(inMemory: Bool = false) {
@@ -15,26 +22,84 @@ final class PersistenceController {
             name: "ScanMyWineCellar",
             managedObjectModel: Self.model
         )
-        let description = NSPersistentStoreDescription(
-            url: inMemory
-                ? URL(fileURLWithPath: "/dev/null")
-                : NSPersistentContainer.defaultDirectoryURL()
-                    .appendingPathComponent("ScanMyWineCellar.sqlite")
-        )
-        // Required once CloudKit mirroring is turned on; harmless before.
-        description.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
-        description.setOption(
-            true as NSNumber,
-            forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey
-        )
-        container.persistentStoreDescriptions = [description]
+
+        if inMemory {
+            // Previews: a single local store, no CloudKit.
+            let description = NSPersistentStoreDescription(url: URL(fileURLWithPath: "/dev/null"))
+            container.persistentStoreDescriptions = [description]
+        } else {
+            let baseURL = NSPersistentContainer.defaultDirectoryURL()
+
+            // Private database: the user's own data. Same store file as
+            // before CloudKit was attached, so existing data is kept and
+            // uploaded on first sync.
+            let privateDescription = NSPersistentStoreDescription(
+                url: baseURL.appendingPathComponent("ScanMyWineCellar.sqlite")
+            )
+            privateDescription.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
+            privateDescription.setOption(
+                true as NSNumber,
+                forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey
+            )
+            let privateOptions = NSPersistentCloudKitContainerOptions(
+                containerIdentifier: Self.cloudKitContainerID
+            )
+            privateOptions.databaseScope = .private
+            privateDescription.cloudKitContainerOptions = privateOptions
+
+            // Shared database: cellars shared with this user.
+            let sharedDescription = NSPersistentStoreDescription(
+                url: baseURL.appendingPathComponent("ScanMyWineCellar-shared.sqlite")
+            )
+            sharedDescription.setOption(true as NSNumber, forKey: NSPersistentHistoryTrackingKey)
+            sharedDescription.setOption(
+                true as NSNumber,
+                forKey: NSPersistentStoreRemoteChangeNotificationPostOptionKey
+            )
+            let sharedOptions = NSPersistentCloudKitContainerOptions(
+                containerIdentifier: Self.cloudKitContainerID
+            )
+            sharedOptions.databaseScope = .shared
+            sharedDescription.cloudKitContainerOptions = sharedOptions
+
+            // The private store comes first: objects created without an
+            // explicit store assignment default to it.
+            container.persistentStoreDescriptions = [privateDescription, sharedDescription]
+        }
+
         container.loadPersistentStores { _, error in
             if let error {
                 fatalError("Failed to load the cellar database: \(error)")
             }
         }
+
+        for description in container.persistentStoreDescriptions {
+            guard let url = description.url,
+                  let store = container.persistentStoreCoordinator.persistentStore(for: url)
+            else { continue }
+            if description.cloudKitContainerOptions?.databaseScope == .shared {
+                sharedStore = store
+            } else {
+                privateStore = store
+            }
+        }
+
         container.viewContext.automaticallyMergesChangesFromParent = true
         container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+
+        #if DEBUG
+        // Push the model's schema to the CloudKit development environment
+        // once, so the record types exist. Before shipping a TestFlight
+        // build, deploy the schema to production in the CloudKit Console.
+        if !inMemory, !UserDefaults.standard.bool(forKey: "cloudKitSchemaPushed") {
+            do {
+                try container.initializeCloudKitSchema(options: [])
+                UserDefaults.standard.set(true, forKey: "cloudKitSchemaPushed")
+            } catch {
+                print("CloudKit schema push failed (will retry next launch): \(error)")
+            }
+        }
+        #endif
 
         // SwiftData autosaved; Core Data doesn't. Save shortly after any
         // change, and immediately when the app leaves the foreground.
@@ -72,6 +137,45 @@ final class PersistenceController {
             try? await Task.sleep(for: .seconds(1))
             guard !Task.isCancelled else { return }
             self?.save()
+        }
+    }
+
+    // MARK: - Sharing
+
+    /// With two stores loaded, brand-new root objects (cellars) must be
+    /// pinned to the private store explicitly.
+    func assignToPrivateStore(_ object: NSManagedObject) {
+        if let privateStore {
+            container.viewContext.assign(object, to: privateStore)
+        }
+    }
+
+    /// Returns the CKShare for a cellar, creating one (and moving the
+    /// cellar with all its wines and racks into a shared CloudKit zone)
+    /// if it isn't shared yet.
+    func share(_ cellar: CDCellar) async throws -> (CKShare, CKContainer) {
+        save()
+        let ckContainer = CKContainer(identifier: Self.cloudKitContainerID)
+        if let existing = try container.fetchShares(matching: [cellar.objectID])[cellar.objectID] {
+            return (existing, ckContainer)
+        }
+        let (_, share, shareContainer) = try await container.share([cellar], to: nil)
+        share[CKShare.SystemFieldKey.title] = cellar.name
+        var updated = share
+        if let privateStore {
+            updated = try await container.persistUpdatedShare(share, in: privateStore)
+        }
+        return (updated, shareContainer)
+    }
+
+    /// Accepts a share invitation (from a link opened in Messages/Mail);
+    /// the shared cellar then syncs into the shared store.
+    func acceptShare(metadata: CKShare.Metadata) {
+        guard let sharedStore else { return }
+        container.acceptShareInvitations(from: [metadata], into: sharedStore) { _, error in
+            if let error {
+                print("Failed to accept the shared cellar: \(error)")
+            }
         }
     }
 

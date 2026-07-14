@@ -2,6 +2,7 @@ import SwiftUI
 
 @main
 struct ScanMyWineCellarApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @AppStorage("appearance") private var appearance = "system"
     @Environment(\.scenePhase) private var scenePhase
 

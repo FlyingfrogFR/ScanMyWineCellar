@@ -47,9 +47,18 @@ enum LegacyMigrator {
                 FetchDescriptor<Wine>(sortBy: [SortDescriptor(\.name)])
             )
 
+            // Everything migrated is the user's own data → private store
+            // (the context also has the CloudKit shared store attached).
+            let assignHome: (NSManagedObject) -> Void = { object in
+                if let store = PersistenceController.shared.privateStore {
+                    context.assign(object, to: store)
+                }
+            }
+
             var cellarByID: [PersistentIdentifier: CDCellar] = [:]
             for old in cellars {
                 let new = CDCellar(context: context)
+                assignHome(new)
                 new.name = old.name
                 new.dateCreated = old.dateCreated
                 cellarByID[old.persistentModelID] = new
@@ -58,6 +67,7 @@ enum LegacyMigrator {
             var rackByID: [PersistentIdentifier: CDRack] = [:]
             for old in racks {
                 let new = CDRack(context: context)
+                assignHome(new)
                 new.name = old.name
                 new.orderIndex = old.orderIndex
                 new.floorCount = old.floorCount
@@ -69,6 +79,7 @@ enum LegacyMigrator {
 
             for old in wines {
                 let new = CDWine(context: context)
+                assignHome(new)
                 new.name = old.name
                 new.producer = old.producer
                 new.vintage = old.vintage

@@ -1,5 +1,6 @@
 import SwiftUI
 import CoreData
+import CloudKit
 
 struct CellarView: View {
     @Environment(\.managedObjectContext) private var viewContext
@@ -19,6 +20,9 @@ struct CellarView: View {
     @State private var showRenameCellar = false
     @State private var renameText = ""
     @State private var confirmDeleteCellar = false
+    @State private var sharePresentation: SharePresentation?
+    @State private var shareError: String?
+    @State private var isPreparingShare = false
     @AppStorage("cellarViewMode") private var viewMode = "list"
 
     /// Wines belonging to the currently selected cellar.
@@ -113,6 +117,31 @@ struct CellarView: View {
             .sheet(item: $exportURL) { url in
                 ShareSheet(items: [url])
             }
+            .sheet(item: $sharePresentation) { presentation in
+                CloudSharingView(share: presentation.share, container: presentation.container)
+                    .ignoresSafeArea()
+            }
+            .alert(
+                "Sharing failed",
+                isPresented: Binding(
+                    get: { shareError != nil },
+                    set: { if !$0 { shareError = nil } }
+                )
+            ) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(shareError ?? "")
+            }
+            .overlay {
+                if isPreparingShare {
+                    ZStack {
+                        Color.black.opacity(0.4).ignoresSafeArea()
+                        ProgressView("Preparing share…")
+                            .padding(20)
+                            .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    }
+                }
+            }
             .alert(
                 "Export failed",
                 isPresented: Binding(
@@ -171,6 +200,11 @@ struct CellarView: View {
             showRenameCellar = true
         } label: {
             Label("Rename cellar", systemImage: "pencil")
+        }
+        Button {
+            shareSelectedCellar()
+        } label: {
+            Label("Share cellar…", systemImage: "person.crop.circle.badge.plus")
         }
         if cellars.count > 1 {
             Button(role: .destructive) {
@@ -302,13 +336,18 @@ struct CellarView: View {
     private func bootstrap() {
         if cellars.isEmpty {
             let cellar = CDCellar(context: viewContext, name: "My Cellar")
+            PersistenceController.shared.assignToPrivateStore(cellar)
             selectedCellar = cellar
         } else if selectedCellar == nil {
             selectedCellar = cellars.first
         }
-        // Adopt wines created before multi-cellar support.
+        // Adopt wines created before multi-cellar support. Only wines in
+        // the private store: a shared wine whose cellar hasn't synced yet
+        // must not be pulled across the store boundary.
         if let home = selectedCellar {
-            for wine in wines where wine.cellar == nil {
+            let privateStore = PersistenceController.shared.privateStore
+            for wine in wines
+            where wine.cellar == nil && wine.objectID.persistentStore === privateStore {
                 wine.cellar = home
             }
         }
@@ -319,7 +358,22 @@ struct CellarView: View {
             context: viewContext,
             name: CDCellar.nextDefaultName(existing: cellars.map(\.name))
         )
+        PersistenceController.shared.assignToPrivateStore(cellar)
         selectedCellar = cellar
+    }
+
+    private func shareSelectedCellar() {
+        guard let cellar = selectedCellar else { return }
+        isPreparingShare = true
+        Task {
+            defer { isPreparingShare = false }
+            do {
+                let (share, container) = try await PersistenceController.shared.share(cellar)
+                sharePresentation = SharePresentation(share: share, container: container)
+            } catch {
+                shareError = error.localizedDescription
+            }
+        }
     }
 
     private func deleteSelectedCellar() {
@@ -381,6 +435,12 @@ struct WineRow: View {
         if !wine.locationLabel.isEmpty { parts.append(wine.locationLabel) }
         return parts.joined(separator: " · ")
     }
+}
+
+struct SharePresentation: Identifiable {
+    let share: CKShare
+    let container: CKContainer
+    var id: String { share.recordID.recordName }
 }
 
 extension URL: @retroactive Identifiable {

@@ -10,9 +10,23 @@
 		444444444444444444444444 /* ScanMyWineCellar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ScanMyWineCellar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		121212121212121212121212 /* Exceptions for "ScanMyWineCellar" folder in "ScanMyWineCellar" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+				ScanMyWineCellar.entitlements,
+			);
+			target = 555555555555555555555555 /* ScanMyWineCellar */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		111111111111111111111111 /* ScanMyWineCellar */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				121212121212121212121212 /* Exceptions for "ScanMyWineCellar" folder in "ScanMyWineCellar" target */,
+			);
 			path = ScanMyWineCellar;
 			sourceTree = "<group>";
 		};
@@ -253,10 +267,12 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ScanMyWineCellar/ScanMyWineCellar.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ScanMyWineCellar/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "ScanMyWineCellar uses the camera to photograph your wine bottles so they can be identified and added to your cellar.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -282,10 +298,12 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = ScanMyWineCellar/ScanMyWineCellar.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ScanMyWineCellar/Info.plist;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSCameraUsageDescription = "ScanMyWineCellar uses the camera to photograph your wine bottles so they can be identified and added to your cellar.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
